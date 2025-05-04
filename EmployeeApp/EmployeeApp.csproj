@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+<<<<<<< HEAD
 <PackageReference Include="Microsoft.Extensions.Hosting" Version="7.0.0" />
 	  	  <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
 	  <PackageReference Include="Serilog" Version="4.2.0" />
@@ -39,4 +40,9 @@
 		<InternalsVisibleTo Include="EmployeeApp.Tests" />
 	</ItemGroup>
 
+=======
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
+  </ItemGroup>
+
+>>>>>>> da25565a586d2c6d7b7495cf9dd8ecdb5bce7156
 </Project>
