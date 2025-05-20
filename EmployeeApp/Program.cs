@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ﻿using EmployeeApp.Exceptions;
 using EmployeeApp.Logging;
 using EmployeeApp.Services;
@@ -6,15 +5,11 @@ using EmployeeApp.Wrappers;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
-=======
-﻿using System;
->>>>>>> da25565a586d2c6d7b7495cf9dd8ecdb5bce7156
 
 class Program
 {
     static void Main(string[] args)
     {
-<<<<<<< HEAD
         try
         {
             var host = Host.CreateDefaultBuilder(args)
@@ -43,9 +38,5 @@ class Program
         {
             Log.CloseAndFlush();
         }
-=======
-      
-        Menu.ShowMenu();
->>>>>>> da25565a586d2c6d7b7495cf9dd8ecdb5bce7156
     }
 }
