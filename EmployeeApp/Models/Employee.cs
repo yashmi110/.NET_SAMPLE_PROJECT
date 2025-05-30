@@ -1,21 +1,23 @@
 ﻿using System;
-public class Employee
+using EmployeeApp.Wrappers;
+
+namespace EmployeeApp.Models
 {
-    public int Id { get; set; }
-    public string Name { get; set; }
-    public int Age { get; set; }
-    public string Department { get; set; }
-
-    public Employee(int id, string name, int age, string department)
+    public class Employee
     {
-        Id = id;
-        Name = name;
-        Age = age;
-        Department = department;
-    }
+        public int Id { get; set; }
+        public string Name { get; set; }
+        public int Age { get; set; }
+        public int DepartmentId { get; set; }
+        public Department Department { get; set; }
+        public ICollection<EmployeeProject> EmployeeProjects { get; set; } = new List<EmployeeProject>();
 
-    public virtual void DisplayDetails()
-    {
-        Console.WriteLine($"ID: {Id}, Name: {Name}, Age: {Age}, Department: {Department}");
+        public virtual void DisplayDetails(IConsole console)
+        {
+            console.WriteLine($"ID: {Id}");
+            console.WriteLine($"Name: {Name}");
+            console.WriteLine($"Age: {Age}");
+            console.WriteLine($"Department: {Department?.Name}");
+        }
     }
 }

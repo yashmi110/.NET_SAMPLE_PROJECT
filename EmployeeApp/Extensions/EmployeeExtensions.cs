@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using EmployeeApp.Models;
+
 
 namespace EmployeeApp.Extensions
 {
@@ -28,10 +30,10 @@ namespace EmployeeApp.Extensions
         {
             var employees = await employeesTask;
             return employees.Where(e =>
-                e.Department.Equals(department, StringComparison.OrdinalIgnoreCase));
+                e.Department?.Name.Equals(department, StringComparison.OrdinalIgnoreCase) == true);
         }
 
-        // Async version of Count
+      
         public static async Task<int> CountAsync(
             this Task<IEnumerable<Employee>> employeesTask)
         {

@@ -2,107 +2,193 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using EmployeeApp.Data;
 using EmployeeApp.Models;
 using EmployeeApp.Repositories;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace EmployeeApp.Services
 {
     public class EmployeeService : IEmployeeService
     {
-        private readonly GenericRepository<Employee> _repository;
+        private readonly IEmployeeRepository _employeeRepository;
+        private readonly IDepartmentRepository _departmentRepository;
+        private readonly IProjectRepository _projectRepository;
+        private readonly IEmployeeProjectRepository _employeeProjectRepository;
 
-        public EmployeeService()
+        public EmployeeService(
+            IEmployeeRepository employeeRepository,
+            IDepartmentRepository departmentRepository,
+            IProjectRepository projectRepository,
+            IEmployeeProjectRepository employeeProjectRepository)
         {
-            _repository = new GenericRepository<Employee>();
+            _employeeRepository = employeeRepository;
+            _departmentRepository = departmentRepository;
+            _projectRepository = projectRepository;
+            _employeeProjectRepository = employeeProjectRepository;
         }
 
+        #region Employee CRUD Operations
         public async Task AddEmployeeAsync(Employee employee)
         {
-            await _repository.AddAsync(employee);
+            await _employeeRepository.AddAsync(employee);
         }
 
         public async Task<Employee> GetEmployeeByIdAsync(int id)
         {
-            return await _repository.GetByIdAsync(id);
+            return await _employeeRepository.GetByIdAsync(id);
         }
 
         public async Task<List<Employee>> GetAllEmployeesAsync()
         {
-            return await _repository.GetAllAsync();
+            return (await _employeeRepository.GetAllAsync()).ToList();
         }
 
         public async Task UpdateEmployeeAsync(Employee employee)
         {
-            await _repository.UpdateAsync(employee);
+            await _employeeRepository.UpdateAsync(employee);
         }
 
         public async Task DeleteEmployeeAsync(int id)
         {
-            await _repository.DeleteAsync(id);
+            await _employeeRepository.DeleteAsync(id);
         }
+        #endregion
 
-        // New LINQ query methods
+        #region Employee Query Methods
         public async Task<List<Employee>> GetEmployeesByDepartmentAsync(string department)
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees
-                .Where(e => e.Department.Equals(department, StringComparison.OrdinalIgnoreCase))
-                .ToList();
+            return (await _employeeRepository.GetByDepartmentAsync(department)).ToList();
         }
 
         public async Task<List<Employee>> GetEmployeesByAgeRangeAsync(int minAge, int maxAge)
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees
-                .Where(e => e.Age >= minAge && e.Age <= maxAge)
-                .ToList();
+            return (await _employeeRepository.GetByAgeRangeAsync(minAge, maxAge)).ToList();
         }
 
         public async Task<double> GetAverageAgeAsync()
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees.Average(e => e.Age);
+            return await _employeeRepository.GetAverageAgeAsync();
         }
 
         public async Task<int> GetEmployeeCountByDepartmentAsync(string department)
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees
-                .Count(e => e.Department.Equals(department, StringComparison.OrdinalIgnoreCase));
+            return await _employeeRepository.GetCountByDepartmentAsync(department);
         }
 
         public async Task<Dictionary<string, int>> GetDepartmentHeadcountAsync()
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees
-                .GroupBy(e => e.Department)
-                .ToDictionary(g => g.Key, g => g.Count());
+            return await _employeeRepository.GetDepartmentHeadcountAsync();
         }
 
         public async Task<List<object>> GetEmployeeProjectionsAsync()
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees
-                .Select(e => new
-                {
-                    e.Id,
-                    e.Name,
-                    e.Department,
-                    IsManager = e is Manager
-                })
-                .ToList<object>();
+            return (await _employeeRepository.GetEmployeeProjectionsAsync()).ToList();
         }
 
         public async Task<Employee> GetOldestEmployeeAsync()
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees.OrderByDescending(e => e.Age).FirstOrDefault();
+            return await _employeeRepository.GetOldestEmployeeAsync();
         }
 
         public async Task<Employee> GetYoungestEmployeeAsync()
         {
-            var allEmployees = await GetAllEmployeesAsync();
-            return allEmployees.OrderBy(e => e.Age).FirstOrDefault();
+            return await _employeeRepository.GetYoungestEmployeeAsync();
         }
+        #endregion
+
+        #region Department Management
+        public async Task<List<Department>> GetAllDepartmentsAsync()
+        {
+            return (await _departmentRepository.GetAllAsync()).ToList();
+        }
+
+        public async Task<Department> GetDepartmentByIdAsync(int id)
+        {
+            return await _departmentRepository.GetByIdAsync(id);
+        }
+
+        public async Task AddDepartmentAsync(Department department)
+        {
+            await _departmentRepository.AddAsync(department);
+        }
+
+        public async Task UpdateDepartmentAsync(Department department)
+        {
+            await _departmentRepository.UpdateAsync(department);
+        }
+
+        public async Task DeleteDepartmentAsync(int id)
+        {
+            await _departmentRepository.DeleteAsync(id);
+        }
+        #endregion
+
+        #region Project Management
+        public async Task<List<Project>> GetAllProjectsAsync()
+        {
+            return (await _projectRepository.GetAllAsync()).ToList();
+        }
+
+        public async Task<Project> GetProjectByIdAsync(int id)
+        {
+            return await _projectRepository.GetByIdAsync(id);
+        }
+
+        public async Task AddProjectAsync(Project project)
+        {
+            await _projectRepository.AddAsync(project);
+        }
+
+        public async Task UpdateProjectAsync(Project project)
+        {
+            await _projectRepository.UpdateAsync(project);
+        }
+
+        public async Task DeleteProjectAsync(int id)
+        {
+            await _projectRepository.DeleteAsync(id);
+        }
+        #endregion
+
+        #region Employee-Project Relationship
+        public async Task AssignProjectAsync(int employeeId, int projectId)
+        {
+            await _employeeProjectRepository.AssignProjectAsync(employeeId, projectId);
+        }
+
+        public async Task RemoveProjectAssignmentAsync(int employeeId, int projectId)
+        {
+            await _employeeProjectRepository.RemoveProjectAssignmentAsync(employeeId, projectId);
+        }
+
+        public async Task<List<EmployeeProject>> GetEmployeeProjectsAsync(int employeeId)
+        {
+            return (await _employeeProjectRepository.GetByEmployeeIdAsync(employeeId)).ToList();
+        }
+        #endregion
+
+        #region Special Queries
+        public async Task<List<Employee>> GetEmployeesWithoutProjectsAsync()
+        {
+            return (await _employeeRepository.GetEmployeesWithoutProjectsAsync()).ToList();
+        }
+
+        public async Task<List<Project>> GetProjectsWithoutEmployeesAsync()
+        {
+            return (await _projectRepository.GetProjectsWithoutEmployeesAsync()).ToList();
+        }
+
+        public async Task<List<Manager>> GetAllManagersAsync()
+        {
+            return (await _employeeRepository.GetAllManagersAsync()).ToList();
+        }
+
+        public async Task<int> GetEmployeeCountByProjectAsync(int projectId)
+        {
+            return await _employeeProjectRepository.GetEmployeeCountByProjectAsync(projectId);
+        }
+        #endregion
     }
 }

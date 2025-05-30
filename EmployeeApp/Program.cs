@@ -1,7 +1,14 @@
-﻿using EmployeeApp.Exceptions;
+﻿using System;
+using System.Threading.Tasks;
+using EmployeeApp;
+using EmployeeApp.Data;
+using EmployeeApp.Exceptions;
 using EmployeeApp.Logging;
+using EmployeeApp.Repositories;
 using EmployeeApp.Services;
 using EmployeeApp.Wrappers;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Serilog;
@@ -13,49 +20,44 @@ class Program
         try
         {
             var host = Host.CreateDefaultBuilder(args)
-                .ConfigureSerilog()
-                .ConfigureServices(services =>
+                .ConfigureAppConfiguration((context, config) =>
                 {
-                    services.AddSingleton<IConsole, ConsoleWrapper>();
-                    services.AddScoped<IFileSystem, FileSystemWrapper>();
-                    services.AddSingleton<IEmployeeService, EmployeeService>();
-                    services.AddSingleton<EmployeeStatistics>();
+                    config.AddJsonFile("appsettings.json", optional: false, reloadOnChange: true);
+                })
+                .ConfigureSerilog()
+                .ConfigureServices((context, services) =>
+                {
+                    // Configure DbContext
+                    var connectionString = context.Configuration.GetConnectionString("DefaultConnection");
+                    services.AddDbContext<AppDbContext>(options =>
+                        options.UseSqlServer(connectionString));
+
+                    // Register repositories
+                    services.AddScoped<IEmployeeRepository, EmployeeRepository>();
+                    services.AddScoped<IDepartmentRepository, DepartmentRepository>();
+                    services.AddScoped<IProjectRepository, ProjectRepository>();
+                    services.AddScoped<IEmployeeProjectRepository, EmployeeProjectRepository>();
+
+                    // Register services
+                    services.AddScoped<IEmployeeService, EmployeeService>();
+                    services.AddScoped<EmployeeStatistics>();
+
+                    // Register infrastructure components
+                    services.AddScoped<IConsole, ConsoleWrapper>();
                     services.AddSingleton<GlobalExceptionHandler>(provider =>
                         new GlobalExceptionHandler(Log.Logger));
                     services.AddSingleton<Menu>();
-
-                    // Add a service to track instances
-                    services.AddSingleton<InstanceTracker>();
                 })
                 .Build();
 
-            using (var scope1 = host.Services.CreateScope())
+            // Apply any pending migrations
+            using (var scope = host.Services.CreateScope())
             {
-                var tracker1 = scope1.ServiceProvider.GetRequiredService<InstanceTracker>();
-                var console1 = scope1.ServiceProvider.GetRequiredService<IConsole>();
-                var fileSystem1 = scope1.ServiceProvider.GetRequiredService<IFileSystem>();
-                var employeeService1 = scope1.ServiceProvider.GetRequiredService<IEmployeeService>();
-
-                tracker1.Track("Scope 1", console1, fileSystem1, employeeService1);
-
-                // Get services again in the same scope
-                var console1a = scope1.ServiceProvider.GetRequiredService<IConsole>();
-                var fileSystem1a = scope1.ServiceProvider.GetRequiredService<IFileSystem>();
-                var employeeService1a = scope1.ServiceProvider.GetRequiredService<IEmployeeService>();
-                tracker1.Track("Scope 1 - Second Resolve", console1a, fileSystem1a, employeeService1a);
+                var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
+                await context.Database.MigrateAsync();
             }
 
-            using (var scope2 = host.Services.CreateScope())
-            {
-                var tracker2 = scope2.ServiceProvider.GetRequiredService<InstanceTracker>();
-                var console2 = scope2.ServiceProvider.GetRequiredService<IConsole>();
-                var fileSystem2 = scope2.ServiceProvider.GetRequiredService<IFileSystem>();
-                var employeeService2 = scope2.ServiceProvider.GetRequiredService<IEmployeeService>();
-
-                tracker2.Track("Scope 2", console2, fileSystem2, employeeService2);
-            }
-
-            // Continue with your menu
+            // Run the application
             using var menuScope = host.Services.CreateScope();
             var menu = menuScope.ServiceProvider.GetRequiredService<Menu>();
             await menu.ShowMenu();
@@ -67,25 +69,6 @@ class Program
         finally
         {
             Log.CloseAndFlush();
-        }
-    }
-}
-
-public class InstanceTracker
-{
-    private readonly ILogger _logger;
-
-    public InstanceTracker(ILogger logger)
-    {
-        _logger = logger;
-    }
-
-    public void Track(string scopeName, params object[] services)
-    {
-        _logger.Information($"--- {scopeName} ---");
-        foreach (var service in services)
-        {
-            _logger.Information($"{service.GetType().Name}: {service.GetHashCode()}");
         }
     }
 }

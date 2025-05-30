@@ -28,16 +28,15 @@ namespace EmployeeApp.Services
 
         public async Task<int> CountByDepartmentAsync(string department)
         {
-            var employeesTask = _employeeService.GetAllEmployeesAsync();
-            var filteredTask = employeesTask.FilterByDepartmentAsync(department);
-            return await filteredTask.CountAsync();
+            var employees = await _employeeService.GetEmployeesByDepartmentAsync(department);
+            return employees.Count;
         }
 
         public async Task<Dictionary<string, int>> GetDepartmentCountsAsync()
         {
             var employees = await _employeeService.GetAllEmployeesAsync();
             return employees
-                .GroupBy(e => e.Department)
+                .GroupBy(e => e.Department.Name)
                 .ToDictionary(g => g.Key, g => g.Count());
         }
     }
