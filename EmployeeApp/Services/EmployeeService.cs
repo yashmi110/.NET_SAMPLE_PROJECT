@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
+using EmployeeApp.Models;
 using EmployeeApp.Repositories;
 
 namespace EmployeeApp.Services
@@ -16,30 +16,93 @@ namespace EmployeeApp.Services
             _repository = new GenericRepository<Employee>();
         }
 
-        public void AddEmployee(Employee employee)
+        public async Task AddEmployeeAsync(Employee employee)
         {
-            _repository.Add(employee);
+            await _repository.AddAsync(employee);
         }
 
-        public Employee GetEmployeeById(int id)
+        public async Task<Employee> GetEmployeeByIdAsync(int id)
         {
-            return _repository.GetById(id);
+            return await _repository.GetByIdAsync(id);
         }
 
-        public List<Employee> GetAllEmployees()
+        public async Task<List<Employee>> GetAllEmployeesAsync()
         {
-            return _repository.GetAll();
+            return await _repository.GetAllAsync();
         }
 
-        public void UpdateEmployee(Employee employee)
+        public async Task UpdateEmployeeAsync(Employee employee)
         {
-            _repository.Update(employee);
+            await _repository.UpdateAsync(employee);
         }
 
-        public void DeleteEmployee(int id)
+        public async Task DeleteEmployeeAsync(int id)
         {
-            _repository.Delete(id);
+            await _repository.DeleteAsync(id);
+        }
+
+        // New LINQ query methods
+        public async Task<List<Employee>> GetEmployeesByDepartmentAsync(string department)
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees
+                .Where(e => e.Department.Equals(department, StringComparison.OrdinalIgnoreCase))
+                .ToList();
+        }
+
+        public async Task<List<Employee>> GetEmployeesByAgeRangeAsync(int minAge, int maxAge)
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees
+                .Where(e => e.Age >= minAge && e.Age <= maxAge)
+                .ToList();
+        }
+
+        public async Task<double> GetAverageAgeAsync()
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees.Average(e => e.Age);
+        }
+
+        public async Task<int> GetEmployeeCountByDepartmentAsync(string department)
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees
+                .Count(e => e.Department.Equals(department, StringComparison.OrdinalIgnoreCase));
+        }
+
+        public async Task<Dictionary<string, int>> GetDepartmentHeadcountAsync()
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees
+                .GroupBy(e => e.Department)
+                .ToDictionary(g => g.Key, g => g.Count());
+        }
+
+        public async Task<List<object>> GetEmployeeProjectionsAsync()
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees
+                .Select(e => new
+                {
+                    e.Id,
+                    e.Name,
+                    e.Department,
+                    IsManager = e is Manager
+                })
+                .ToList<object>();
+        }
+
+        public async Task<Employee> GetOldestEmployeeAsync()
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees.OrderByDescending(e => e.Age).FirstOrDefault();
+        }
+
+        public async Task<Employee> GetYoungestEmployeeAsync()
+        {
+            var allEmployees = await GetAllEmployeesAsync();
+            return allEmployees.OrderBy(e => e.Age).FirstOrDefault();
         }
     }
-
 }

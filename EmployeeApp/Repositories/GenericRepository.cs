@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 using System.Threading.Tasks;
 
 namespace EmployeeApp.Repositories
@@ -11,47 +10,53 @@ namespace EmployeeApp.Repositories
         private readonly Dictionary<int, T> _entities = new Dictionary<int, T>();
         private int _nextId = 1;
 
-        public void Add(T entity)
+        public async Task AddAsync(T entity)
         {
-            var idProperty = typeof(T).GetProperty("Id");
-            if (idProperty != null && idProperty.CanWrite)
+            await Task.Run(() => 
             {
-                idProperty.SetValue(entity, _nextId, null);
-                _entities.Add(_nextId, entity);
-                _nextId++;
-            }
-            else
-            {
-                throw new InvalidOperationException("Entity must have a writable Id property");
-            }
-        }
-
-        public T GetById(int id)
-        {
-            return _entities.TryGetValue(id, out var entity) ? entity : null;
-        }
-
-        public List<T> GetAll()
-        {
-            return _entities.Values.ToList();
-        }
-
-        public void Update(T entity)
-        {
-            var idProperty = entity.GetType().GetProperty("Id");
-            if (idProperty != null)
-            {
-                int id = (int)idProperty.GetValue(entity);
-                if (_entities.ContainsKey(id))
+                var idProperty = typeof(T).GetProperty("Id");
+                if (idProperty != null && idProperty.CanWrite)
                 {
-                    _entities[id] = entity;
+                    idProperty.SetValue(entity, _nextId, null);
+                    _entities.Add(_nextId, entity);
+                    _nextId++;
                 }
-            }
+                else
+                {
+                    throw new InvalidOperationException("Entity must have a writable Id property");
+                }
+            });
         }
 
-        public void Delete(int id)
+        public async Task<T> GetByIdAsync(int id)
         {
-            _entities.Remove(id);
+            return await Task.Run(() => _entities.TryGetValue(id, out var entity) ? entity : null);
+        }
+
+        public async Task<List<T>> GetAllAsync()
+        {
+            return await Task.Run(() => _entities.Values.ToList());
+        }
+
+        public async Task UpdateAsync(T entity)
+        {
+            await Task.Run(() =>
+            {
+                var idProperty = entity.GetType().GetProperty("Id");
+                if (idProperty != null)
+                {
+                    int id = (int)idProperty.GetValue(entity);
+                    if (_entities.ContainsKey(id))
+                    {
+                        _entities[id] = entity;
+                    }
+                }
+            });
+        }
+
+        public async Task DeleteAsync(int id)
+        {
+            await Task.Run(() => _entities.Remove(id));
         }
     }
 }

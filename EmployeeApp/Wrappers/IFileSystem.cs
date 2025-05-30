@@ -11,6 +11,9 @@ namespace EmployeeApp.Wrappers
         bool FileExists(string path);
         string ReadAllText(string path);
         void WriteAllText(string path, string contents);
+
+        // Add async versions
+        Task<string> ReadAllTextAsync(string path);
+        Task WriteAllTextAsync(string path, string contents);
     }
-  
 }

@@ -12,5 +12,15 @@ namespace EmployeeApp.Wrappers
         public string ReadAllText(string path) => File.ReadAllText(path);
         public void WriteAllText(string path, string contents) => File.WriteAllText(path, contents);
 
+        // Implement async versions
+        public async Task<string> ReadAllTextAsync(string path)
+        {
+            return await File.ReadAllTextAsync(path);
+        }
+
+        public async Task WriteAllTextAsync(string path, string contents)
+        {
+            await File.WriteAllTextAsync(path, contents);
+        }
     }
 }

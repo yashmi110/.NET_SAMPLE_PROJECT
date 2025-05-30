@@ -6,21 +6,24 @@ using Newtonsoft.Json;
 using System.IO;
 using EmployeeApp.Wrappers;
 using EmployeeApp.Exceptions;
+using EmployeeApp.Extensions;
 
 public class Menu
 {
     private readonly IEmployeeService _employeeService;
     private readonly IConsole _console;
     private readonly IFileSystem _fileSystem;
-    private readonly GlobalExceptionHandler _exceptionHandler; 
+    private readonly GlobalExceptionHandler _exceptionHandler;
+    private readonly EmployeeStatistics _employeeStatistics;
     private const string DataFilePath = "employees.json";
 
-    public Menu(IEmployeeService employeeService, IConsole console, IFileSystem fileSystem, GlobalExceptionHandler exceptionHandler)
+    public Menu(IEmployeeService employeeService, IConsole console, IFileSystem fileSystem, GlobalExceptionHandler exceptionHandler, EmployeeStatistics employeeStatistics)
     {
         _employeeService = employeeService;
         _console = console;
         _fileSystem = fileSystem;
         _exceptionHandler = exceptionHandler;
+        _employeeStatistics = employeeStatistics;
     }
 
     public string FormatEmployeeName(string name)
@@ -52,9 +55,9 @@ public class Menu
         }
     }
 
-    public void ShowMenu()
+    public async Task ShowMenu()
     {
-        LoadEmployees();
+        await LoadEmployees();
 
         while (true)
         {
@@ -63,30 +66,46 @@ public class Menu
             _console.WriteLine("2. Add Manager");
             _console.WriteLine("3. View All Employees");
             _console.WriteLine("4. View Employee Details");
-            _console.WriteLine("5. Save and Exit");
-            _console.WriteLine("6. Exit without saving");
+            _console.WriteLine("5. View Department Statistics");
+            _console.WriteLine("6. View Employee Projections");
+            _console.WriteLine("7. View Age Statistics");
+            _console.WriteLine("8. Basic Stats");
+            _console.WriteLine("9. Save Data");
+            _console.WriteLine("9. Exit without saving...");
 
             string choice = _console.ReadLine();
 
             switch (choice)
             {
                 case "1":
-                    AddEmployee(false);
+                    await AddEmployee(false);
                     break;
                 case "2":
-                    AddEmployee(true);
+                    await AddEmployee(true);
                     break;
                 case "3":
-                    ViewAllEmployees();
+                    await ViewAllEmployees();
                     break;
                 case "4":
-                    ViewEmployeeDetails();
+                    await ViewEmployeeDetails();
                     break;
                 case "5":
-                    SaveEmployees();
+                    await ViewDepartmentStatistics();
+                    break;
+                case "6":
+                    await ViewEmployeeProjections();
+                    break;
+                case "7":
+                    await ViewAgeStatistics();
+                    break;
+                case "8":
+                    await ShowStatisticsAsync();
+                    break;
+                case "9":
+                    await SaveEmployees();
                     _console.WriteLine("Data saved successfully. Exiting...");
                     return;
-                case "6":
+                case "10":
                     _console.WriteLine("Exiting without saving...");
                     return;
                 default:
@@ -95,11 +114,10 @@ public class Menu
             }
         }
     }
-
-    internal void AddEmployee(bool isManager)
+    internal async Task AddEmployee(bool isManager)
     {
         _console.WriteLine("Enter Employee Name:");
-        string name = FormatEmployeeName(_console.ReadLine());
+        string name = _console.ReadLine().FormatName();
 
         int age = GetValidAge();
 
@@ -116,20 +134,20 @@ public class Menu
             }
 
             Manager manager = new Manager(0, name, age, department, teamSize);
-            _employeeService.AddEmployee(manager);
+            await _employeeService.AddEmployeeAsync(manager);
         }
         else
         {
             Employee employee = new Employee(0, name, age, department);
-            _employeeService.AddEmployee(employee);
+            await _employeeService.AddEmployeeAsync(employee);
         }
 
         _console.WriteLine("Added successfully!");
     }
 
-    internal void ViewAllEmployees()
+    internal async Task ViewAllEmployees()
     {
-        var employees = _employeeService.GetAllEmployees();
+        var employees = await _employeeService.GetAllEmployeesAsync();
         if (employees.Count == 0)
         {
             _console.WriteLine("No employees found.");
@@ -144,7 +162,7 @@ public class Menu
         }
     }
 
-    internal void ViewEmployeeDetails()
+    internal async Task ViewEmployeeDetails()
     {
         try
         {
@@ -154,7 +172,7 @@ public class Menu
                 throw new InvalidInputException("Employee ID", "Invalid number");
             }
 
-            var employee = _employeeService.GetEmployeeById(id);
+            var employee = await _employeeService.GetEmployeeByIdAsync(id);
             if (employee == null)
             {
                 throw new EmployeeNotFoundException(id);
@@ -169,21 +187,91 @@ public class Menu
         }
     }
 
+    // Add new methods for LINQ queries
+    internal async Task ViewDepartmentStatistics()
+    {
+        var departments = await _employeeService.GetDepartmentHeadcountAsync();
+        _console.WriteLine("\nDepartment Headcount:");
+        foreach (var dept in departments)
+        {
+            _console.WriteLine($"{dept.Key}: {dept.Value} employees");
+        }
+    }
 
-    internal void LoadEmployees()
+    internal async Task ViewEmployeeProjections()
+    {
+        var projections = await _employeeService.GetEmployeeProjectionsAsync();
+        _console.WriteLine("\nEmployee Projections (ID, Name, Department, IsManager):");
+        foreach (dynamic emp in projections)
+        {
+            _console.WriteLine($"{emp.Id}: {emp.Name} ({emp.Department}) - {(emp.IsManager ? "Manager" : "Employee")}");
+        }
+    }
+
+    internal async Task ViewAgeStatistics()
+    {
+        var averageAge = await _employeeService.GetAverageAgeAsync();
+        var oldest = await _employeeService.GetOldestEmployeeAsync();
+        var youngest = await _employeeService.GetYoungestEmployeeAsync();
+
+        _console.WriteLine("\nAge Statistics:");
+        _console.WriteLine($"Average Age: {averageAge:F1}");
+        _console.WriteLine($"Oldest Employee: {oldest?.Name} ({oldest?.Age} years)");
+        _console.WriteLine($"Youngest Employee: {youngest?.Name} ({youngest?.Age} years)");
+    }
+
+
+    // Add new menu option to show statistics
+    internal async Task ShowStatisticsAsync()
+    {
+        try
+        {
+            // Ensure data is loaded
+            await LoadEmployees();
+
+            _console.WriteLine("\nEmployee Statistics:");
+
+            var avgAge = await _employeeStatistics.GetAverageAgeAsync();
+            _console.WriteLine(avgAge > 0
+                ? $"Average Age: {avgAge:F1}"
+                : "No employees available to calculate average age");
+
+            _console.WriteLine("\nEmployees by Department:");
+            var departmentCounts = await _employeeStatistics.GetDepartmentCountsAsync();
+
+            if (departmentCounts.Any())
+            {
+                foreach (var dept in departmentCounts)
+                {
+                    _console.WriteLine($"{dept.Key}: {dept.Value} employees");
+                }
+            }
+            else
+            {
+                _console.WriteLine("No employees found in any department");
+            }
+        }
+        catch (Exception ex)
+        {
+            _exceptionHandler.HandleException(ex, "ShowStatistics");
+        }
+    }
+
+
+    internal async Task LoadEmployees()
     {
         if (_fileSystem.FileExists(DataFilePath))
         {
             try
             {
-                string json = _fileSystem.ReadAllText(DataFilePath);
+                string json = await _fileSystem.ReadAllTextAsync(DataFilePath);
                 var employees = JsonConvert.DeserializeObject<List<Employee>>(json);
 
                 if (employees != null)
                 {
                     foreach (var emp in employees)
                     {
-                        _employeeService.AddEmployee(emp);
+                        await _employeeService.AddEmployeeAsync(emp);
                     }
                 }
             }
@@ -194,16 +282,16 @@ public class Menu
         }
     }
 
-    internal void SaveEmployees()
+    internal async Task SaveEmployees()
     {
         try
         {
             string fullPath = Path.GetFullPath(DataFilePath);
             _console.WriteLine($"Saving data to: {fullPath}");
 
-            var employees = _employeeService.GetAllEmployees();
+            var employees = await _employeeService.GetAllEmployeesAsync();
             string json = JsonConvert.SerializeObject(employees, Formatting.Indented);
-            _fileSystem.WriteAllText(DataFilePath, json);
+            await _fileSystem.WriteAllTextAsync(DataFilePath, json);
         }
         catch (Exception ex)
         {
