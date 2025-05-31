@@ -189,6 +189,11 @@ namespace EmployeeApp.Services
         {
             return await _employeeProjectRepository.GetEmployeeCountByProjectAsync(projectId);
         }
+
+        public async Task<Dictionary<string, List<string>>> GetDepartmentProjectsAsync()
+        {
+            return await _employeeRepository.GetDepartmentProjectsAsync();
+        }
         #endregion
     }
 }

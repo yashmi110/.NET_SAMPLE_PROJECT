@@ -50,5 +50,6 @@ namespace EmployeeApp.Services
         Task<List<Project>> GetProjectsWithoutEmployeesAsync();
         Task<List<Manager>> GetAllManagersAsync();
         Task<int> GetEmployeeCountByProjectAsync(int projectId);
+        Task<Dictionary<string, List<string>>> GetDepartmentProjectsAsync();
     }
 }

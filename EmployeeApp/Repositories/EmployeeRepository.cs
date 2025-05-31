@@ -136,5 +136,21 @@ namespace EmployeeApp.Repositories
                 .Include(m => m.Department)
                 .ToListAsync();
         }
+
+        public async Task<Dictionary<string, List<string>>> GetDepartmentProjectsAsync()
+        {
+            return await _context.Employees
+                .Include(e => e.Department)
+                .Include(e => e.EmployeeProjects)
+                    .ThenInclude(ep => ep.Project)
+                .GroupBy(e => e.Department.Name)
+                .ToDictionaryAsync(
+                    g => g.Key,
+                    g => g.SelectMany(e => e.EmployeeProjects)
+                        .Select(ep => ep.Project.Title)
+                        .Distinct()
+                        .ToList()
+                );
+        }
     }
 }

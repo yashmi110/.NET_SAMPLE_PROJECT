@@ -39,7 +39,8 @@ namespace EmployeeApp
                 _console.WriteLine("7. View Age Statistics");
                 _console.WriteLine("8. Assign Project to Employee");
                 _console.WriteLine("9. Basic Stats");
-                _console.WriteLine("10. Exit");
+                _console.WriteLine("10. View Department Projects");
+                _console.WriteLine("11. Exit");
 
                 string choice = _console.ReadLine();
 
@@ -73,6 +74,9 @@ namespace EmployeeApp
                         await ShowStatisticsAsync();
                         break;
                     case "10":
+                        await ViewDepartmentProjects();
+                        break;
+                    case "11":
                         _console.WriteLine("Exiting...");
                         return;
                     default:
@@ -381,5 +385,35 @@ namespace EmployeeApp
                 _console.WriteLine($"Error: {ex.Message}");
             }
         }
+
+        internal async Task ViewDepartmentProjects()
+        {
+            try
+            {
+                var departmentProjects = await _employeeService.GetDepartmentProjectsAsync();
+
+                if (!departmentProjects.Any())
+                {
+                    _console.WriteLine("No department projects found.");
+                    return;
+                }
+
+                _console.WriteLine("\nProjects by Department:");
+                foreach (var dept in departmentProjects)
+                {
+                    _console.WriteLine($"{dept.Key}:");
+                    foreach (var project in dept.Value)
+                    {
+                        _console.WriteLine($"- {project}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _exceptionHandler.HandleException(ex, "ViewDepartmentProjects");
+                _console.WriteLine($"Error: {ex.Message}");
+            }
+        }
+
     }
 }

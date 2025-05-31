@@ -8,22 +8,21 @@ using Xunit;
 using Newtonsoft.Json;
 using EmployeeApp.Exceptions;
 using Serilog;
+using EmployeeApp.Extensions;
 
 namespace EmployeeApp.Tests
 {
-    public class MenuTest
+    public class MenuTests
     {
         private readonly Mock<IEmployeeService> _employeeServiceMock;
         private readonly Mock<IConsole> _consoleMock;
-        private readonly Mock<IFileSystem> _fileSystemMock;
         private readonly Mock<EmployeeStatistics> _employeeStatsMock;
         private readonly Menu _menu;
 
-        public MenuTest()
+        public MenuTests()
         {
             _employeeServiceMock = new Mock<IEmployeeService>();
             _consoleMock = new Mock<IConsole>();
-            _fileSystemMock = new Mock<IFileSystem>();
             _employeeStatsMock = new Mock<EmployeeStatistics>(_employeeServiceMock.Object);
             var loggerMock = new Mock<ILogger>();
             var exceptionHandler = new GlobalExceptionHandler(loggerMock.Object);
@@ -31,7 +30,6 @@ namespace EmployeeApp.Tests
             _menu = new Menu(
                 _employeeServiceMock.Object,
                 _consoleMock.Object,
-                _fileSystemMock.Object,
                 exceptionHandler,
                 _employeeStatsMock.Object);
         }
@@ -46,7 +44,7 @@ namespace EmployeeApp.Tests
         [InlineData("j o h n", "J O H N")]
         public void FormatEmployeeName_ShouldFormatCorrectly(string input, string expected)
         {
-            var result = _menu.FormatEmployeeName(input);
+            var result = input.FormatName();
             Assert.Equal(expected, result);
         }
 
@@ -67,63 +65,92 @@ namespace EmployeeApp.Tests
         [Fact]
         public async Task AddEmployee_RegularEmployee_ShouldAddSuccessfully()
         {
+            // Arrange
+            var departments = new List<Department>
+            {
+                new Department { Id = 1, Name = "IT" }
+            };
+
             _consoleMock.SetupSequence(c => c.ReadLine())
                 .Returns("test employee")
                 .Returns("35")
-                .Returns("IT");
+                .Returns("1"); // Department ID
 
+            _employeeServiceMock.Setup(s => s.GetAllDepartmentsAsync())
+                .ReturnsAsync(departments);
+
+            // Act
             await _menu.AddEmployee(false);
 
+            // Assert
             _employeeServiceMock.Verify(s => s.AddEmployeeAsync(It.Is<Employee>(e =>
                 e.Name == "Test Employee" &&
                 e.Age == 35 &&
-                e.Department == "IT")), Times.Once);
-            _consoleMock.Verify(c => c.WriteLine("Added successfully!"), Times.Once);
+                e.DepartmentId == 1)), Times.Once);
+            _consoleMock.Verify(c => c.WriteLine("Employee added successfully!"), Times.Once);
         }
 
         [Fact]
         public async Task AddEmployee_Manager_ShouldAddSuccessfully()
         {
+            // Arrange
+            var departments = new List<Department>
+            {
+                new Department { Id = 1, Name = "Management" }
+            };
+
             _consoleMock.SetupSequence(c => c.ReadLine())
                 .Returns("test manager")
                 .Returns("40")
-                .Returns("Management")
-                .Returns("10");
+                .Returns("1") // Department ID
+                .Returns("10"); // Team size
 
+            _employeeServiceMock.Setup(s => s.GetAllDepartmentsAsync())
+                .ReturnsAsync(departments);
+
+            // Act
             await _menu.AddEmployee(true);
 
+            // Assert
             _employeeServiceMock.Verify(s => s.AddEmployeeAsync(It.Is<Manager>(m =>
                 m.Name == "Test Manager" &&
                 m.Age == 40 &&
-                m.Department == "Management" &&
+                m.DepartmentId == 1 &&
                 m.TeamSize == 10)), Times.Once);
-            _consoleMock.Verify(c => c.WriteLine("Added successfully!"), Times.Once);
+            _consoleMock.Verify(c => c.WriteLine("Employee added successfully!"), Times.Once);
         }
 
         [Fact]
         public async Task ViewAllEmployees_NoEmployees_ShouldDisplayMessage()
         {
+            // Arrange
             _employeeServiceMock.Setup(s => s.GetAllEmployeesAsync())
                 .ReturnsAsync(new List<Employee>());
 
+            // Act
             await _menu.ViewAllEmployees();
 
+            // Assert
             _consoleMock.Verify(c => c.WriteLine("No employees found."), Times.Once);
         }
 
         [Fact]
         public async Task ViewAllEmployees_WithEmployees_ShouldDisplayDetails()
         {
+            // Arrange
             var employees = new List<Employee>
             {
-                new Employee(1, "John Doe", 30, "IT"),
-                new Manager(2, "Jane Smith", 40, "Management", 5)
+                new Employee { Id = 1, Name = "John Doe", Age = 30, Department = new Department { Name = "IT" } },
+                new Manager { Id = 2, Name = "Jane Smith", Age = 40, Department = new Department { Name = "Management" }, TeamSize = 5 }
             };
+
             _employeeServiceMock.Setup(s => s.GetAllEmployeesAsync())
                 .ReturnsAsync(employees);
 
+            // Act
             await _menu.ViewAllEmployees();
 
+            // Assert
             _consoleMock.Verify(c => c.WriteLine("\nEmployee List:"), Times.Once);
             _consoleMock.Verify(c => c.WriteLine("-------------------"), Times.Exactly(2));
         }
@@ -131,113 +158,121 @@ namespace EmployeeApp.Tests
         [Fact]
         public async Task ViewEmployeeDetails_ValidId_ShouldDisplayDetails()
         {
-            var employee = new Employee(1, "John Doe", 30, "IT");
+            // Arrange
+            var employee = new Employee
+            {
+                Id = 1,
+                Name = "John Doe",
+                Age = 30,
+                Department = new Department { Name = "IT" }
+            };
+
             _consoleMock.Setup(c => c.ReadLine()).Returns("1");
             _employeeServiceMock.Setup(s => s.GetEmployeeByIdAsync(1))
                 .ReturnsAsync(employee);
 
+            // Act
             await _menu.ViewEmployeeDetails();
 
+            // Assert
             _consoleMock.Verify(c => c.WriteLine(It.IsAny<string>()), Times.AtLeastOnce);
         }
 
         [Fact]
         public async Task ViewEmployeeDetails_InvalidId_ShouldHandleError()
         {
+            // Arrange
             _consoleMock.Setup(c => c.ReadLine()).Returns("invalid");
 
+            // Act
             await _menu.ViewEmployeeDetails();
 
+            // Assert
             _consoleMock.Verify(c => c.WriteLine(It.Is<string>(s => s.Contains("Error"))));
         }
 
         [Fact]
-        public async Task LoadEmployees_FileExists_ShouldLoadEmployees()
+        public async Task ViewDepartmentStatistics_ShouldDisplayStats()
         {
-            var employees = new List<Employee> { new Employee(1, "John Doe", 30, "IT") };
-            var json = JsonConvert.SerializeObject(employees);
+            // Arrange
+            var departmentStats = new Dictionary<string, int>
+            {
+                { "IT", 5 },
+                { "HR", 3 }
+            };
 
-            _fileSystemMock.Setup(f => f.FileExists("employees.json")).Returns(true);
-            _fileSystemMock.Setup(f => f.ReadAllTextAsync("employees.json"))
-                .ReturnsAsync(json);
+            _employeeServiceMock.Setup(s => s.GetDepartmentHeadcountAsync())
+                .ReturnsAsync(departmentStats);
 
-            await _menu.LoadEmployees();
+            // Act
+            await _menu.ViewDepartmentStatistics();
 
-            _employeeServiceMock.Verify(s => s.AddEmployeeAsync(It.IsAny<Employee>()), Times.Once);
+            // Assert
+            _consoleMock.Verify(c => c.WriteLine("\nDepartment Headcount:"), Times.Once);
+            _consoleMock.Verify(c => c.WriteLine("IT: 5 employees"), Times.Once);
+            _consoleMock.Verify(c => c.WriteLine("HR: 3 employees"), Times.Once);
         }
 
-        [Fact]
-        public async Task LoadEmployees_FileDoesNotExist_ShouldNotLoad()
-        {
-            _fileSystemMock.Setup(f => f.FileExists("employees.json")).Returns(false);
-
-            await _menu.LoadEmployees();
-
-            _employeeServiceMock.Verify(s => s.AddEmployeeAsync(It.IsAny<Employee>()), Times.Never);
-        }
 
         [Fact]
-        public async Task SaveEmployees_ShouldSaveSuccessfully()
+        public async Task AssignProjectToEmployee_ShouldAssignSuccessfully()
         {
-            var employees = new List<Employee> { new Employee(1, "John Doe", 30, "IT") };
+            // Arrange
+            var employees = new List<Employee>
+            {
+                new Employee { Id = 1, Name = "John Doe", Department = new Department { Name = "IT" } }
+            };
+
+            var projects = new List<Project>
+            {
+                new Project { Id = 1, Title = "Website Redesign" }
+            };
+
+            _consoleMock.SetupSequence(c => c.ReadLine())
+                .Returns("1") // Employee ID
+                .Returns("1"); // Project ID
+
             _employeeServiceMock.Setup(s => s.GetAllEmployeesAsync())
                 .ReturnsAsync(employees);
 
-            await _menu.SaveEmployees();
+            _employeeServiceMock.Setup(s => s.GetAllProjectsAsync())
+                .ReturnsAsync(projects);
 
-            _fileSystemMock.Verify(f => f.WriteAllTextAsync("employees.json", It.IsAny<string>()), Times.Once);
-            _consoleMock.Verify(c => c.WriteLine(It.Is<string>(s => s.StartsWith("Saving data to:"))), Times.Once);
+            // Act
+            await _menu.AssignProjectToEmployee();
+
+            // Assert
+            _employeeServiceMock.Verify(s => s.AssignProjectAsync(1, 1), Times.Once);
+            _consoleMock.Verify(c => c.WriteLine("Project assigned successfully!"), Times.Once);
         }
 
         [Fact]
-        public async Task ShowStatisticsAsync_ShouldDisplayStats()
+        public async Task ShowMenu_Option5_ShouldShowDepartmentStatistics()
         {
-            _employeeStatsMock.Setup(s => s.GetAverageAgeAsync())
-                .ReturnsAsync(35.5);
-            _employeeStatsMock.Setup(s => s.GetDepartmentCountsAsync())
-                .ReturnsAsync(new Dictionary<string, int> { { "IT", 5 } });
+   
+            _consoleMock.SetupSequence(c => c.ReadLine())
+                .Returns("5")
+                .Returns("10"); 
 
-            await _menu.ShowStatisticsAsync();
+            var departmentStats = new Dictionary<string, int>
+            {
+                { "IT", 5 }
+            };
 
-            _consoleMock.Verify(c => c.WriteLine("\nEmployee Statistics:"), Times.Once);
-            _consoleMock.Verify(c => c.WriteLine("Average Age: 35.5"), Times.Once);
+            _employeeServiceMock.Setup(s => s.GetDepartmentHeadcountAsync())
+                .ReturnsAsync(departmentStats);
+            await _menu.ShowMenu();
             _consoleMock.Verify(c => c.WriteLine("IT: 5 employees"), Times.Once);
         }
 
         [Fact]
-        public async Task ShowMenu_Option5_ShouldShowStatistics()
+        public async Task ShowMenu_Option10_ShouldExit()
         {
+            
             _consoleMock.SetupSequence(c => c.ReadLine())
-                .Returns("5")
-                .Returns("8"); // Exit after
-
+                .Returns("10");
             await _menu.ShowMenu();
-
-            _employeeStatsMock.Verify(s => s.GetAverageAgeAsync(), Times.Once);
-        }
-
-        [Fact]
-        public async Task ShowMenu_Option8_ShouldSaveAndExit()
-        {
-            _consoleMock.SetupSequence(c => c.ReadLine())
-                .Returns("8");
-
-            await _menu.ShowMenu();
-
-            _fileSystemMock.Verify(f => f.WriteAllTextAsync("employees.json", It.IsAny<string>()), Times.Once);
-            _consoleMock.Verify(c => c.WriteLine("Data saved successfully. Exiting..."), Times.Once);
-        }
-
-        [Fact]
-        public async Task ShowMenu_Option9_ShouldExitWithoutSaving()
-        {
-            _consoleMock.SetupSequence(c => c.ReadLine())
-                .Returns("9");
-
-            await _menu.ShowMenu();
-
-            _fileSystemMock.Verify(f => f.WriteAllTextAsync("employees.json", It.IsAny<string>()), Times.Never);
-            _consoleMock.Verify(c => c.WriteLine("Exiting without saving..."), Times.Once);
+            _consoleMock.Verify(c => c.WriteLine("Exiting..."), Times.Once);
         }
     }
 }

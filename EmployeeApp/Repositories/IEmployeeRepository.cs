@@ -26,6 +26,8 @@ namespace EmployeeApp.Repositories
         Task<Employee> GetYoungestEmployeeAsync();
         Task<IEnumerable<Employee>> GetEmployeesWithoutProjectsAsync();
         Task<IEnumerable<Manager>> GetAllManagersAsync();
+        Task<Dictionary<string, List<string>>> GetDepartmentProjectsAsync();
+
     }
 
 }
