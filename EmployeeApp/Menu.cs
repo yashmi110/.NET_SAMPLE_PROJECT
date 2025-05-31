@@ -82,7 +82,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task AddEmployee(bool isManager)
+        internal async Task AddEmployee(bool isManager)
         {
             try
             {
@@ -144,7 +144,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task AssignProjectToEmployee()
+        internal async Task AssignProjectToEmployee()
         {
             try
             {
@@ -200,7 +200,7 @@ namespace EmployeeApp
             }
         }
 
-        private int GetValidAge()
+        internal int GetValidAge()
         {
             while (true)
             {
@@ -213,7 +213,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task ViewAllEmployees()
+        internal async Task ViewAllEmployees()
         {
             try
             {
@@ -246,7 +246,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task ViewEmployeeDetails()
+        internal async Task ViewEmployeeDetails()
         {
             try
             {
@@ -280,7 +280,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task ViewDepartmentStatistics()
+        internal async Task ViewDepartmentStatistics()
         {
             try
             {
@@ -304,7 +304,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task ViewEmployeeProjections()
+        internal async Task ViewEmployeeProjections()
         {
             try
             {
@@ -329,7 +329,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task ViewAgeStatistics()
+        internal async Task ViewAgeStatistics()
         {
             try
             {
@@ -349,7 +349,7 @@ namespace EmployeeApp
             }
         }
 
-        private async Task ShowStatisticsAsync()
+        internal async Task ShowStatisticsAsync()
         {
             try
             {
